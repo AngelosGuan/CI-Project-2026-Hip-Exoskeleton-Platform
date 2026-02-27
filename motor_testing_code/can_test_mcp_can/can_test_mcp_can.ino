@@ -33,7 +33,7 @@ struct can_frame {
 struct can_frame canMsg;
 struct can_frame canMsg1;
 
-uint8_t CAN_ID = 0;
+uint8_t CAN_ID = 0x68; // for the working motor
 
 // ----------------------- MCP_CAN wrappers --------------------
 static void comm_can_transmit_sid(uint32_t id, const uint8_t *data, uint8_t len) {
@@ -160,7 +160,7 @@ void comm_can_set_duty(uint8_t controller_id, float duty) {
   int32_t send_index = 0;
   uint8_t buffer[4];
   buffer_append_int32(buffer, (int32_t)(duty * 100000.0), &send_index);
-  comm_can_transmit_sid(controller_id | ((uint32_t)CAN_PACKET_SET_DUTY << 8), buffer, send_index);
+  comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_DUTY << 8), buffer, send_index);
 }
 
 //电流环模式
@@ -168,7 +168,7 @@ void comm_can_set_current(uint8_t controller_id, float current) {
   int32_t send_index = 0;
   uint8_t buffer[4];
   buffer_append_int32(buffer, (int32_t)(current * 1000.0), &send_index);
-  comm_can_transmit_sid(controller_id | ((uint32_t)CAN_PACKET_SET_CURRENT << 8), buffer, send_index);
+  comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_CURRENT << 8), buffer, send_index);
 }
 
 //电流刹车模式
@@ -176,7 +176,7 @@ void comm_can_set_cb(uint8_t controller_id, float current) {
   int32_t send_index = 0;
   uint8_t buffer[4];
   buffer_append_int32(buffer, (int32_t)(current * 1000.0), &send_index);
-  comm_can_transmit_sid(controller_id | ((uint32_t)CAN_PACKET_SET_CURRENT_BRAKE << 8), buffer, send_index);
+  comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_CURRENT_BRAKE << 8), buffer, send_index);
 }
 
 //速度环模式
@@ -184,7 +184,7 @@ void comm_can_set_rpm(uint8_t controller_id, float rpm) {
   int32_t send_index = 0;
   uint8_t buffer[4];
   buffer_append_int32(buffer, (int32_t)rpm, &send_index);
-  comm_can_transmit_sid(controller_id | ((uint32_t)CAN_PACKET_SET_RPM << 8), buffer, send_index);
+  comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_RPM << 8), buffer, send_index);
 }
 
 //位置环模式
@@ -192,7 +192,7 @@ void comm_can_set_pos(uint8_t controller_id, float pos) {
   int32_t send_index = 0;
   uint8_t buffer[4];
   buffer_append_int32(buffer, (int32_t)(pos * 10000.0), &send_index);
-  comm_can_transmit_sid(controller_id | ((uint32_t)CAN_PACKET_SET_POS << 8), buffer, send_index);
+  comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_POS << 8), buffer, send_index);
 }
 
 //设置原点模式
@@ -200,7 +200,7 @@ void comm_can_set_origin(uint8_t controller_id, uint8_t set_origin_mode) {
   int32_t send_index = 0;
   uint8_t buffer;
   buffer = set_origin_mode;
-  comm_can_transmit_sid(controller_id | ((uint32_t)CAN_PACKET_SET_ORIGIN_HERE << 8), &buffer, send_index);
+  comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_ORIGIN_HERE << 8), &buffer, send_index);
 }
 
 //位置速度环模式
@@ -211,24 +211,24 @@ void comm_can_set_pos_spd(uint8_t controller_id, float pos, int16_t spd, int16_t
   buffer_append_int32(buffer, (int32_t)(pos * 10000.0), &send_index);
   buffer_append_int16(buffer, spd / 10.0, &send_index1);
   buffer_append_int16(buffer, RPA / 10.0, &send_index1);
-  comm_can_transmit_sid(controller_id | ((uint32_t)CAN_PACKET_SET_POS_SPD << 8), buffer, send_index1);
+  comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_POS_SPD << 8), buffer, send_index1);
 }
 
 /********************MIT********************/
 //进入电机模式
 void set_mit_mode_run(uint8_t controller_id) {
   uint8_t buffer[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc };
-  comm_can_transmit_sid(controller_id, buffer, 8);
+  comm_can_transmit_eid(controller_id, buffer, 8);
 }
 //退出电机模式
 void set_mit_mode_idle(uint8_t controller_id) {
   uint8_t buffer[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd };
-  comm_can_transmit_sid(controller_id, buffer, 8);
+  comm_can_transmit_eid(controller_id, buffer, 8);
 }
 //设置原点
 void set_mit_current_position_zero_positong(uint8_t controller_id) {
   uint8_t buffer[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe };
-  comm_can_transmit_sid(controller_id, buffer, 8);
+  comm_can_transmit_eid(controller_id, buffer, 8);
 }
 
 unsigned int float_to_uint(float x, float x_min, float x_max, unsigned int bits) {
@@ -398,7 +398,7 @@ void setup() {
     Serial.print("CAN init ok!\r\n");
     CAN0.setMode(MCP_NORMAL);
 
-    comm_can_transmit_sid(0x00, can_test, 8);
+    comm_can_transmit_sid(0x00, can_test, 8); // just for testing, not actually sent to the motor
   } else {
     Serial.print("CAN init fault!\r\n");
   }
@@ -411,8 +411,14 @@ uint8_t cntr = 0;
 
 void loop() {
   delay(100);
-  down();
+  //down();
   // pack_cmd(CAN_ID,0,1,0,1,0);
+
+  //example code to use velocity control mode: 
+  //comm_can_set_rpm(CAN_ID, 5000);
+
+  // change this to other set methods to achieve position control and current control. 
+  // (KT (Nm/A): 0.095 for torque control via current control mode for this motor)
 
   if (read_can_frame(&canMsg)) {
     if (canMsg.can_id & CAN_EFF_FLAG) {
