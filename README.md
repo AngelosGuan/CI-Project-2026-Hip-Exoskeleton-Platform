@@ -5,7 +5,7 @@
 
 
 # KT for current control for ak80-9 kv100 
- 0.095 Nm/A, some vendors listed 0.105 Nm/A
+ 0.095 Nm/A
 # Use <24V to power the motor for testing
 
 <img width="2064" height="1185" alt="GPIO" src="https://github.com/user-attachments/assets/8e95d916-5695-429a-9ded-6ed463742805" />
