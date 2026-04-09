@@ -1,3 +1,16 @@
+
+/*****************************************
+ * motor_can.c
+ * Raspberry Pi 4B — SocketCAN port of can_test_mcp_can.ino
+ *
+ * Build:
+ *   gcc motor_can.c -o motor_can
+ *
+ * Bring up CAN interface before running:
+ *   sudo ip link set can0 type can bitrate 500000
+ *   sudo ip link set can0 up
+ *****************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -11,7 +24,7 @@
 #include <linux/can/raw.h>
 
 // ----------------------- Motor ID -----------------------
-#define CAN_ID 0x68
+#define CAN_ID 0x00
 
 // ----------------------- MIT mode limits ----------------
 #define P_MIN  -12.5f
@@ -187,7 +200,7 @@ void comm_can_set_rpm(uint8_t controller_id, float rpm)
 {
     int32_t idx = 0;
     uint8_t buf[4];
-    buffer_append_int32(buf, (int32_t)rpm, &idx);
+    buffer_append_int32(buf, (int32_t)rpm * 21 * 9, &idx);
     comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_RPM << 8), buf, idx);
 }
 
@@ -304,7 +317,8 @@ int main(void)
         return 1;
     }
     printf("CAN init ok!\n");
-
+    // set_mit_mode_run(CAN_ID);
+    // usleep(200000);
     // --- one-time test frame (mirrors the setup() transmit) ---
     const uint8_t can_test[8] = { 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA };
     comm_can_transmit_sid(0x00, can_test, 8);
@@ -315,39 +329,11 @@ int main(void)
 
     // ---- loop -----------------------------------------------
     struct can_frame canMsg;
-
+    comm_can_set_origin(CAN_ID, 0.0f);
+    usleep(200000);
+    // comm_can_set_rpm(CAN_ID, 50);
     while (1) {
-        usleep(100000);  // 100 ms — same cadence as Arduino loop()
-
-        // --- send a motor command here ---
-        // Uncomment whichever mode you need:
-
-        // comm_can_set_rpm(CAN_ID, 5000);
-        // comm_can_set_duty(CAN_ID, 0.1f);
-        // comm_can_set_current(CAN_ID, 1.0f);
-        // comm_can_set_pos(CAN_ID, 180.0f);
-        // comm_can_set_pos_spd(CAN_ID, 180.0f, 1000, 1000);
-        // pack_cmd(CAN_ID, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-
-        // --- receive any incoming frame (100 ms timeout) ---
-        int ret = read_can_frame(&canMsg, 100);
-        if (ret <= 0) continue;   // timeout or error, loop again
-
-        int is_ext = (canMsg.can_id & CAN_EFF_FLAG) != 0;
-        uint32_t raw_id = canMsg.can_id & (is_ext ? CAN_EFF_MASK : CAN_SFF_MASK);
-
-        printf("%s ID=0x%X len=%d data=",
-               is_ext ? "EID" : "SID", raw_id, canMsg.can_dlc);
-        for (int i = 0; i < canMsg.can_dlc; i++)
-            printf("%02X ", canMsg.data[i]);
-        printf("\n");
-
-        // Servo mode status reply
-        if (raw_id == (0x2900 | CAN_ID))
-            motor_receive_servo(&canMsg);
-
-        // MIT mode status reply — uncomment if using MIT mode
-        // motor_receive_mit(&canMsg);
+        
     }
 
     close(can_sock);
