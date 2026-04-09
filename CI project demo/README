@@ -1,0 +1,3 @@
+To Run:
+
+gcc main.c -o main OscAddress.c OscBundle.c OscCommon.c OscError.c OscMessage.c OscPacket.c OscSlip.c NgimuReceive.c filter.c  -lm -lwiringPi
